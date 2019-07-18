@@ -34,7 +34,7 @@ class ParserException(Exception):
                 col = '-' * self.col_offset + '^'
                 output += '\n' + col
 
-        elif self.lineno and self.col_offset:
+        elif self.lineno is not None and self.col_offset is not None:
             output = 'line %d:%d %s' % (
                 self.lineno,
                 self.col_offset,
@@ -70,3 +70,32 @@ class InvalidTypeException(ParserException):
 
 class TypeMismatchException(ParserException):
     pass
+
+
+class FunctionDeclarationException(ParserException):
+    pass
+
+
+class EventDeclarationException(ParserException):
+    pass
+
+
+class VersionException(ParserException):
+    pass
+
+
+class SyntaxException(ParserException):
+    pass
+
+
+class ArrayIndexException(ParserException):
+    pass
+
+
+class CompilerPanic(Exception):
+
+    def __init__(self, message):
+        self.message = message
+
+    def __str__(self):
+        return self.message + ' Please create an issue.'

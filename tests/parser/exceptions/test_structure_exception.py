@@ -1,9 +1,14 @@
 import pytest
-from pytest import raises
+from pytest import (
+    raises,
+)
 
-from vyper import compiler
-from vyper.exceptions import StructureException
-
+from vyper import (
+    compiler,
+)
+from vyper.exceptions import (
+    StructureException,
+)
 
 fail_list = [
     """
@@ -22,24 +27,6 @@ send(0x1234567890123456789012345678901234567890, 5)
 send(0x1234567890123456789012345678901234567890, 5)
     """,
     """
-x: int128[5]
-@public
-def foo():
-    self.x[2:4] = 3
-    """,
-    """
-x: int128[5]
-@public
-def foo():
-    z = self.x[2:4]
-    """,
-    """
-@public
-def foo():
-    x: int128[5]
-    z = x[2:4]
-    """,
-    """
 @public
 def foo():
     x: int128 = 5
@@ -48,8 +35,7 @@ def foo():
     """,
     """
 @public
-def foo():
-    x: int128 = 5
+def foo(x: int128):
     y: int128 = 7
     for i in range(x, x + y):
         pass
@@ -84,12 +70,12 @@ def foo():
     """
 @public
 def foo():
-    x: bytes32 = sha3("moose", 3)
+    x: bytes32 = keccak256("moose", 3)
     """,
     """
 @public
 def foo():
-    x = raw_call(0x1234567890123456789012345678901234567890, "cow")
+    x = raw_call(0x1234567890123456789012345678901234567890, b"cow")
     """,
     """
 @public
@@ -99,17 +85,17 @@ def foo():
     """
 @public
 def foo():
-    x = create_with_code_of(0x1234567890123456789012345678901234567890, "cow")
+    x = create_forwarder_to(0x1234567890123456789012345678901234567890, b"cow")
     """,
     """
 @public
 def foo():
-    x = raw_call(0x1234567890123456789012345678901234567890, "cow", gas=111111, outsize=4, moose=9)
+    x = raw_call(0x1234567890123456789012345678901234567890, b"cow", gas=111111, outsize=4, moose=9)
     """,
     """
 @public
 def foo():
-    x = create_with_code_of(0x1234567890123456789012345678901234567890, outsize=4)
+    x = create_forwarder_to(0x1234567890123456789012345678901234567890, outsize=4)
     """,
     """
 x: public()
@@ -117,12 +103,12 @@ x: public()
     """
 @public
 def foo():
-    raw_log([], "cow", "dog")
+    raw_log([], b"cow", "dog")
     """,
     """
 @public
 def foo():
-    raw_log("cow", "dog")
+    raw_log(b"cow", b"dog")
     """,
     """
 @public
@@ -144,12 +130,7 @@ def foo() -> int128:
     """
 @public
 def foo():
-    x: address = ~self
-    """,
-    """
-@public
-def foo():
-    x = concat("")
+    x = concat(b"")
     """,
     """
 @public
@@ -165,11 +146,49 @@ def foo() -> int128:
 q:int128 = 111
 def foo() -> int128:
     return self.q
+    """,
     """
+b: map(int128, bytes32)
+@public
+def foo():
+    del self.b[0], self.b[1]
+    """,
+    """
+@public
+def foo():
+    b: int128
+    del b
+    """,
+    """
+contract F:
+    def foo(): constant
+struct S:
+    x: int128
+    """,
+    """
+g: int128
+struct S:
+    x: int128
+    """,
+    """
+struct S:
+    x: int128
+s: S = S({x: int128}, 1)
+    """,
+    """
+struct S:
+    x: int128
+s: S = S(1)
+    """,
+    """
+struct S:
+    x: int128
+s: S = S()
+    """,
 ]
 
 
 @pytest.mark.parametrize('bad_code', fail_list)
 def test_invalid_type_exception(bad_code):
     with raises(StructureException):
-        compiler.compile(bad_code)
+        compiler.compile_code(bad_code)

@@ -1,3 +1,8 @@
+from vyper.exceptions import (
+    ArrayIndexException,
+)
+
+
 def test_list_tester_code(get_contract_with_gas_estimation):
     list_tester_code = """
 z: int128[3]
@@ -71,7 +76,7 @@ def joo() -> int128[2]:
 
 @public
 def koo() -> int128[2][2]:
-    return [[1,2],[3,4]]
+    return [[1, 2], [3, 4]]
 
 @public
 def loo() -> int128[2][2]:
@@ -93,11 +98,11 @@ def poo(inp: int128[2][2]) -> int128[2][2]:
 
 @public
 def qoo(inp: int128[2]) -> int128[2][2]:
-    return [inp,[3,4]]
+    return [inp, [3,4]]
 
 @public
-def roo(inp: int128[2]) -> decimal[2][2]:
-    return [inp,[3,4]]
+def roo(inp: decimal[2]) -> decimal[2][2]:
+    return [inp, [3.0, 4.0]]
     """
 
     c = get_contract_with_gas_estimation(list_output_tester_code)
@@ -148,3 +153,104 @@ def test_array(x: int128, y: int128, z: int128, w: int128) -> int128:
     c = get_contract_with_gas_estimation(two_d_array_accessor)
     assert c.test_array(2, 7, 1, 8) == 2718
     print('Passed complex array accessor test')
+
+
+def test_returns_lists(get_contract_with_gas_estimation):
+    code = """
+@public
+def test_array_num_return() -> int128[2][2]:
+    a: int128[2][2] = [[1, 2], [3, 4]]
+    return a
+
+@public
+def test_array_decimal_return1() -> decimal[2][2]:
+    a: decimal[2][2] = [[1.0, 2.0], [3.0, 4.0]]
+    return a
+
+@public
+def test_array_decimal_return2() -> decimal[2][2]:
+    return [[1.0, 2.0], [3.0, 4.0]]
+
+@public
+def test_array_decimal_return3() -> decimal[2][2]:
+    a: decimal[2][2] = [[1.0, 2.0], [3.0, 4.0]]
+    return a
+"""
+
+    c = get_contract_with_gas_estimation(code)
+    assert c.test_array_num_return() == [[1, 2], [3, 4]]
+    assert c.test_array_decimal_return1() == [[1.0, 2.0], [3.0, 4.0]]
+    assert c.test_array_decimal_return2() == [[1.0, 2.0], [3.0, 4.0]]
+    assert c.test_array_decimal_return3() == [[1.0, 2.0], [3.0, 4.0]]
+
+
+def test_mult_list(get_contract_with_gas_estimation):
+    code = """
+@public
+def test_multi3() -> uint256[2][2][2]:
+    l: uint256[2][2][2] = [[[0, 0], [0, 4]], [[0, 0], [0, 123]]]
+    return l
+
+@public
+def test_multi4() -> uint256[2][2][2][2]:
+    l: uint256[2][2][2][2] = [[[[1, 0], [0, 4]], [[0, 0], [0, 0]]], [[[444, 0], [0, 0]],[[1, 0], [0, 222]]]]  # noqa: E501
+    return l
+    """
+
+    c = get_contract_with_gas_estimation(code)
+
+    assert c.test_multi3() == [[[0, 0], [0, 4]], [[0, 0], [0, 123]]]
+    assert c.test_multi4() == [
+        [[[1, 0], [0, 4]], [[0, 0], [0, 0]]],
+        [[[444, 0], [0, 0]], [[1, 0], [0, 222]]],
+    ]
+
+
+def test_uint256_accessor(get_contract_with_gas_estimation, assert_tx_failed):
+    code = """
+@public
+def bounds_check_uint256(ix: uint256) -> uint256:
+    xs: uint256[3] = [1,2,3]
+    return xs[ix]
+    """
+    c = get_contract_with_gas_estimation(code)
+    assert c.bounds_check_uint256(0) == 1
+    assert c.bounds_check_uint256(2) == 3
+    assert_tx_failed(lambda: c.bounds_check_uint256(3))
+
+
+def test_int128_accessor(get_contract_with_gas_estimation, assert_tx_failed):
+    code = """
+@public
+def bounds_check_int128(ix: int128) -> uint256:
+    xs: uint256[3] = [1,2,3]
+    return xs[ix]
+    """
+    c = get_contract_with_gas_estimation(code)
+    assert c.bounds_check_int128(0) == 1
+    assert c.bounds_check_int128(2) == 3
+    assert_tx_failed(lambda: c.bounds_check_int128(3))
+    assert_tx_failed(lambda: c.bounds_check_int128(-1))
+
+
+def test_compile_time_bounds_check(get_contract_with_gas_estimation, assert_compile_failed):
+    code = """
+@public
+def fail() -> uint256:
+    xs: uint256[3] = [1,2,3]
+    return xs[3]
+    """
+    assert_compile_failed(
+            lambda: get_contract_with_gas_estimation(code),
+            ArrayIndexException
+            )
+    code = """
+@public
+def fail() -> uint256:
+    xs: uint256[3] = [1,2,3]
+    return xs[-1]
+    """
+    assert_compile_failed(
+            lambda: get_contract_with_gas_estimation(code),
+            ArrayIndexException
+            )

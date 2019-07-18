@@ -1,20 +1,19 @@
-from ethereum.tools import tester
 
 
-def test_extract32_extraction(get_contract_with_gas_estimation):
+def test_extract32_extraction(assert_tx_failed, get_contract_with_gas_estimation):
     extract32_code = """
-y: bytes <= 100
+y: bytes[100]
 @public
-def extrakt32(inp: bytes <= 100, index: int128) -> bytes32:
+def extrakt32(inp: bytes[100], index: int128) -> bytes32:
     return extract32(inp, index)
 
 @public
-def extrakt32_mem(inp: bytes <= 100, index: int128) -> bytes32:
-    x: bytes <= 100 = inp
+def extrakt32_mem(inp: bytes[100], index: int128) -> bytes32:
+    x: bytes[100] = inp
     return extract32(x, index)
 
 @public
-def extrakt32_storage(index: int128, inp: bytes <= 100) -> bytes32:
+def extrakt32_storage(index: int128, inp: bytes[100]) -> bytes32:
     self.y = inp
     return extract32(self.y, index)
     """
@@ -40,12 +39,7 @@ def extrakt32_storage(index: int128, inp: bytes <= 100) -> bytes32:
     for S, i in test_cases:
         expected_result = S[i: i + 32] if 0 <= i <= len(S) - 32 else None
         if expected_result is None:
-            try:
-                c.extrakt32(S, i)
-                success = True
-            except tester.TransactionFailed:
-                success = False
-            assert not success
+            assert_tx_failed(lambda: c.extrakt32(S, i))
         else:
             assert c.extrakt32(S, i) == expected_result
             assert c.extrakt32_mem(S, i) == expected_result
@@ -54,48 +48,41 @@ def extrakt32_storage(index: int128, inp: bytes <= 100) -> bytes32:
     print("Passed bytes32 extraction test")
 
 
-def test_extract32_code(get_contract_with_gas_estimation):
+def test_extract32_code(assert_tx_failed, get_contract_with_gas_estimation):
     extract32_code = """
 @public
-def foo(inp: bytes <= 32) -> int128:
+def foo(inp: bytes[32]) -> int128:
     return extract32(inp, 0, type=int128)
 
 @public
-def bar(inp: bytes <= 32) -> uint256:
+def bar(inp: bytes[32]) -> uint256:
     return extract32(inp, 0, type=uint256)
 
 @public
-def baz(inp: bytes <= 32) -> bytes32:
+def baz(inp: bytes[32]) -> bytes32:
     return extract32(inp, 0, type=bytes32)
 
 @public
-def fop(inp: bytes <= 32) -> bytes32:
+def fop(inp: bytes[32]) -> bytes32:
     return extract32(inp, 0)
 
 @public
-def foq(inp: bytes <= 32) -> address:
+def foq(inp: bytes[32]) -> address:
     return extract32(inp, 0, type=address)
     """
 
     c = get_contract_with_gas_estimation(extract32_code)
     assert c.foo(b"\x00" * 30 + b"\x01\x01") == 257
     assert c.bar(b"\x00" * 30 + b"\x01\x01") == 257
-    try:
-        c.foo(b"\x80" + b"\x00" * 30)
-        success = True
-    except tester.TransactionFailed:
-        success = False
-    assert not success
+
+    assert_tx_failed(lambda: c.foo(b"\x80" + b"\x00" * 30))
+
     assert c.bar(b"\x80" + b"\x00" * 31) == 2**255
 
     assert c.baz(b"crow" * 8) == b"crow" * 8
     assert c.fop(b"crow" * 8) == b"crow" * 8
     assert c.foq(b"\x00" * 12 + b"3" * 20) == "0x" + "3" * 40
-    try:
-        c.foq(b"crow" * 8)
-        success = True
-    except tester.TransactionFailed:
-        success = False
-    assert not success
+
+    assert_tx_failed(lambda: c.foq(b"crow" * 8))
 
     print('Passed extract32 test')

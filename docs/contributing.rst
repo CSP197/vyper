@@ -1,4 +1,3 @@
-############
 Contributing
 ############
 
@@ -20,13 +19,11 @@ In particular, we need help in the following areas:
 * Suggesting Improvements
 * Fixing and responding to `Vyper's GitHub issues <https://github.com/ethereum/vyper/issues>`_
 
-
-
 How to Suggest Improvements
 ===========================
 
 To suggest an improvement, please create a Vyper Improvement Proposal (VIP for short)
-using the `VIP Template <https://github.com/ethereum/vyper/tree/master/.github/VIP_TEMPLATE.md>`_.
+using the `VIP Template <https://github.com/ethereum/vyper/blob/master/.github/ISSUE_TEMPLATE/vip.md>`_.
 
 How to Report Issues
 ====================
