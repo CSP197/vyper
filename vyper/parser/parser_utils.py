@@ -906,6 +906,10 @@ def zero_pad(bytez_placeholder, maxlen, context):
 
 # Generate return code for stmt
 def make_return_stmt(stmt, context, begin_pos, _size, loop_memory_position=None):
+    from vyper.parser.function_definitions.utils import (
+        get_nonreentrant_lock
+    )
+    _, nonreentrant_post = get_nonreentrant_lock(context.sig, context.global_ctx)
     if context.is_private:
         if loop_memory_position is None:
             loop_memory_position = context.new_placeholder(typ=BaseType('uint256'))
@@ -922,7 +926,8 @@ def make_return_stmt(stmt, context, begin_pos, _size, loop_memory_position=None)
             mloads = [
                 ['mload', pos] for pos in range(begin_pos, _size, 32)
             ]
-            return ['seq_unchecked'] + mloads + [['jump', ['mload', context.callback_ptr]]]
+            return ['seq_unchecked'] + mloads + nonreentrant_post + \
+                [['jump', ['mload', context.callback_ptr]]]
         else:
             mloads = [
                 'seq_unchecked',
@@ -945,9 +950,10 @@ def make_return_stmt(stmt, context, begin_pos, _size, loop_memory_position=None)
                 ['goto', start_label],
                 ['label', exit_label]
             ]
-            return ['seq_unchecked'] + [mloads] + [['jump', ['mload', context.callback_ptr]]]
+            return ['seq_unchecked'] + [mloads] + nonreentrant_post + \
+                [['jump', ['mload', context.callback_ptr]]]
     else:
-        return ['return', begin_pos, _size]
+        return ['seq_unchecked'] + nonreentrant_post + [['return', begin_pos, _size]]
 
 
 # Generate code for returning a tuple or struct.
@@ -955,7 +961,7 @@ def gen_tuple_return(stmt, context, sub):
     # Is from a call expression.
     if sub.args and len(sub.args[0].args) > 0 and sub.args[0].args[0].value == 'call':
         # self-call to public.
-        mem_pos = sub.args[0].args[-1]
+        mem_pos = sub
         mem_size = get_size_of_type(sub.typ) * 32
         return LLLnode.from_list(['return', mem_pos, mem_size], typ=sub.typ)
 
